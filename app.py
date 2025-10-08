@@ -5,7 +5,7 @@ import os
 import requests
 import random
 
-# Redis 라이브러리 로드
+# Redis 라이브러리 로드 
 try:
     import redis
     redis_available = True
