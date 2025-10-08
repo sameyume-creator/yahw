@@ -5,7 +5,7 @@ import os
 import requests
 import random
 
-# Redis 라이브러리 로드 
+# Redis 라이브러리 로드
 try:
     import redis
     redis_available = True
@@ -41,14 +41,11 @@ IMAGE_BASE_URL = 'https://pub-46e5ec14460c439081d4bed697e21c3a.r2.dev/'
 # --- HTML 템플릿 생성 함수 ---
 def create_stream_html_template(title, images, chats, random_chats):
     
-    # 방송 화면 이미지 HTML 생성
     images_html = ""
     for img_name in images:
         images_html += f'<img src="{IMAGE_BASE_URL}{img_name}.png" alt="stream content">'
 
-    # 채팅 메시지 HTML 생성
     chats_html = ""
-    # 1. 전달받은 채팅
     for chat in chats:
         chats_html += f"""
         <div class="chat-message">
@@ -56,7 +53,6 @@ def create_stream_html_template(title, images, chats, random_chats):
             <span class="chat-text">{chat['text']}</span>
         </div>
         """
-    # 2. 랜덤 이모티콘 채팅
     for chat in random_chats:
         chats_html += f"""
         <div class="chat-message">
@@ -65,16 +61,17 @@ def create_stream_html_template(title, images, chats, random_chats):
         </div>
         """
 
+    # --- 폰트 설정을 LINESeed로 변경 ---
     return f"""
     <!DOCTYPE html>
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
         <title>Streaming Screen</title>
-        <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+        <link rel="stylesheet" type="text/css" href="https://hangeul.pstatic.net/hangeul_static/css/lineseed.css">
         <style>
             :root {{ --bg-color: #18181b; --surface-color: #2a2a2e; --border-color: #444449; --primary-text-color: #efeff1; --secondary-text-color: #a0a0ab; --accent-color: #9147ff; --accent-color-light: #a970ff; }}
-            body {{ background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: "Pretendard", sans-serif; color: var(--primary-text-color); }}
+            body {{ background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: "LINESeed", sans-serif; color: var(--primary-text-color); }}
             .browser-window {{ width: 1024px; aspect-ratio: 4 / 3; background-color: var(--surface-color); border-radius: 8px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; overflow: hidden; }}
             .browser-header {{ background-color: #3c3c42; padding: 8px 15px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }}
             .address-bar {{ background-color: var(--bg-color); border-radius: 6px; padding: 5px 10px; width: 100%; color: var(--secondary-text-color); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
@@ -119,17 +116,14 @@ def create_stream_html_template(title, images, chats, random_chats):
 @app.route('/make_stream')
 def make_stream():
     try:
-        # 1. 방송 화면 이미지 파라미터 파싱
         images = []
         image_params = ['a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1', 'i1', 'j1']
         for param in image_params:
             if request.args.get(param):
                 images.append(request.args.get(param))
 
-        # 2. 방송 제목 파라미터 파싱
         title = request.args.get('t') or '야화님 방송 중!'
 
-        # 3. 채팅 파라미터 파싱
         chats = []
         for i in range(1, 4):
             user = request.args.get(f'c{i}u')
@@ -137,7 +131,6 @@ def make_stream():
             if user and text:
                 chats.append({'user': user, 'text': text})
 
-        # 4. 랜덤 이모티콘 채팅 생성 (닉네임 목록 수정)
         random_chats = []
         random_usernames = [
             "매일밤세우는기둥", "헐떡이는숨구멍", "야화전용방망이", "축축한손바닥", "가버렷홍콩열차",
@@ -159,13 +152,12 @@ def make_stream():
             emote_url = f"{IMAGE_BASE_URL}YA{emote_num}.png"
             random_chats.append({'user': user, 'emote_url': emote_url})
         
-        # 5. HTML 생성 및 Playwright 렌더링
         html_content = create_stream_html_template(title, images, chats, random_chats)
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page()
-            page.set_viewport_size({"width": 1024, "height": 768}) # 4:3 비율
+            page.set_viewport_size({"width": 1024, "height": 768})
             page.set_content(html_content, wait_until="networkidle")
             screenshot_bytes = page.screenshot(type='png')
             browser.close()
