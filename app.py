@@ -39,29 +39,29 @@ if redis_available:
 IMAGE_BASE_URL = 'https://pub-46e5ec14460c439081d4bed697e21c3a.r2.dev/'
 
 # --- HTML 템플릿 생성 함수 ---
-def create_stream_html_template(title, images, chats, random_chats):
+def create_stream_html_template(title, image_url, all_chats):
     
-    images_html = ""
-    for img_name in images:
-        images_html += f'<img src="{IMAGE_BASE_URL}{img_name}.png" alt="stream content">'
+    # 방송 화면 이미지 HTML 생성 (단일 이미지)
+    image_html = f'<img src="{image_url}" alt="stream content">' if image_url else ""
 
+    # 채팅 메시지 HTML 생성
     chats_html = ""
-    for chat in chats:
-        chats_html += f"""
-        <div class="chat-message">
-            <span class="chat-username">{chat['user']}:</span>
-            <span class="chat-text">{chat['text']}</span>
-        </div>
-        """
-    for chat in random_chats:
-        chats_html += f"""
-        <div class="chat-message">
-            <span class="chat-username">{chat['user']}:</span>
-            <img src="{chat['emote_url']}" class="chat-emote">
-        </div>
-        """
+    for chat in all_chats:
+        if chat.get('type') == 'text':
+            chats_html += f"""
+            <div class="chat-message">
+                <span class="chat-username">{chat['user']}:</span>
+                <span class="chat-text">{chat['text']}</span>
+            </div>
+            """
+        elif chat.get('type') == 'emote':
+            chats_html += f"""
+            <div class="chat-message">
+                <span class="chat-username">{chat['user']}:</span>
+                <img src="{chat['emote_url']}" class="chat-emote">
+            </div>
+            """
 
-    # --- 폰트 설정을 LINESeed로 변경 ---
     return f"""
     <!DOCTYPE html>
     <html lang="ko">
@@ -70,13 +70,13 @@ def create_stream_html_template(title, images, chats, random_chats):
         <title>Streaming Screen</title>
         <link rel="stylesheet" type="text/css" href="https://hangeul.pstatic.net/hangeul_static/css/lineseed.css">
         <style>
-            :root {{ --bg-color: #18181b; --surface-color: #2a2a2e; --border-color: #444449; --primary-text-color: #efeff1; --secondary-text-color: #a0a0ab; --accent-color: #9147ff; --accent-color-light: #a970ff; }}
+            :root {{ --bg-color: #18181b; --surface-color: #2a2a2e; --border-color: #444449; --primary-text-color: #efeff1; --secondary-text-color: #a0a0ab; --accent-color-light: #a970ff; }}
             body {{ background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: "LINESeed", sans-serif; color: var(--primary-text-color); }}
             .browser-window {{ width: 1024px; aspect-ratio: 4 / 3; background-color: var(--surface-color); border-radius: 8px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; overflow: hidden; }}
             .browser-header {{ background-color: #3c3c42; padding: 8px 15px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }}
             .address-bar {{ background-color: var(--bg-color); border-radius: 6px; padding: 5px 10px; width: 100%; color: var(--secondary-text-color); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
             .stream-layout {{ display: flex; flex-grow: 1; min-height: 0; }}
-            .video-player {{ flex-grow: 1; background-color: #000; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2px; padding: 2px; align-content: start; }}
+            .video-player {{ flex-grow: 1; background-color: #000; display: flex; justify-content: center; align-items: center; }}
             .video-player img {{ width: 100%; height: 100%; object-fit: cover; }}
             .stream-info {{ padding: 20px; background-color: #1f1f23; border-top: 1px solid var(--border-color); flex-shrink: 0; }}
             .stream-title {{ font-size: 22px; font-weight: 700; margin: 0 0 10px 0; }}
@@ -95,7 +95,7 @@ def create_stream_html_template(title, images, chats, random_chats):
         <div class="browser-window">
             <header class="browser-header"><div class="address-bar">https://rplay.live/yahwa</div></header>
             <main class="stream-layout">
-                <div class="video-player">{images_html}</div>
+                <div class="video-player">{image_html}</div>
                 <div class="chat-window">
                     <div class="chat-header">채팅</div>
                     <div class="chat-messages">{chats_html}</div>
@@ -116,21 +116,22 @@ def create_stream_html_template(title, images, chats, random_chats):
 @app.route('/make_stream')
 def make_stream():
     try:
-        images = []
-        image_params = ['a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1', 'i1', 'j1']
-        for param in image_params:
-            if request.args.get(param):
-                images.append(request.args.get(param))
+        # 1. 단일 이미지 파라미터 'i' 파싱
+        image_name = request.args.get('i')
+        image_url = f"{IMAGE_BASE_URL}{image_name}.png" if image_name else ""
 
+        # 2. 방송 제목 파라미터 't' 파싱
         title = request.args.get('t') or '야화님 방송 중!'
 
-        chats = []
-        for i in range(1, 4):
+        # 3. 전달받은 채팅 파라미터 파싱 (4개로 변경)
+        user_chats = []
+        for i in range(1, 5):
             user = request.args.get(f'c{i}u')
             text = request.args.get(f'c{i}t')
             if user and text:
-                chats.append({'user': user, 'text': text})
-
+                user_chats.append({'user': user, 'text': text, 'type': 'text'})
+        
+        # 4. 랜덤 이모티콘 채팅 생성 (유지)
         random_chats = []
         random_usernames = [
             "매일밤세우는기둥", "헐떡이는숨구멍", "야화전용방망이", "축축한손바닥", "가버렷홍콩열차",
@@ -150,14 +151,19 @@ def make_stream():
             user = random.choice(random_usernames)
             emote_num = random.randint(1, 12)
             emote_url = f"{IMAGE_BASE_URL}YA{emote_num}.png"
-            random_chats.append({'user': user, 'emote_url': emote_url})
+            random_chats.append({'user': user, 'emote_url': emote_url, 'type': 'emote'})
+
+        # 5. 두 채팅 목록을 합치고 순서 섞기
+        all_chats = user_chats + random_chats
+        random.shuffle(all_chats)
         
-        html_content = create_stream_html_template(title, images, chats, random_chats)
+        # 6. HTML 생성 및 Playwright 렌더링
+        html_content = create_stream_html_template(title, image_url, all_chats)
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page()
-            page.set_viewport_size({"width": 1024, "height": 768})
+            page.set_viewport_size({"width": 1024, "height": 768}) # 4:3 비율
             page.set_content(html_content, wait_until="networkidle")
             screenshot_bytes = page.screenshot(type='png')
             browser.close()
