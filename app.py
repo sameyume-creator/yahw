@@ -104,7 +104,7 @@ def create_stream_html_template(title, image_url, all_chats):
             <footer class="stream-info">
                 <h1 class="stream-title">{title}</h1>
                 <div class="streamer-info">
-                    <img src="https://placehold.co/40x40/efeff1/18181b?text=Y" alt="스트리머 프로필" class="streamer-pic">
+                    <img src="https://pub-46e5ec14460c439081d4bed697e21c3a.r2.dev/pro.png" alt="스트리머 프로필" class="streamer-pic">
                     <span class="streamer-name">야화</span>
                 </div>
             </footer>
